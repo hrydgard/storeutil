@@ -1,2 +1,4 @@
 *.png
 pub
+merge_eboot/merge_eboot
+extract_icons/extract_icons
