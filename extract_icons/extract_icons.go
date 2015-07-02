@@ -2,14 +2,25 @@ package main
 
 import (
 	"archive/zip"
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"os"
 	"strings"
+	"github.com/hrydgard/storeutil/pbp"
 )
+
+/*
+type Category struct {
+
+}
+
+type Store struct {
+	Type int `json:"type"`
+	Version int `json:"version"`
+	Categories map[string]Category `json:"categories"`
+}
+*/
 
 func ExtractData(f *zip.File, subFile int) ([]byte, error) {
 	rc, err := f.Open()
@@ -17,33 +28,13 @@ func ExtractData(f *zip.File, subFile int) ([]byte, error) {
 		return nil, err
 	}
 	defer rc.Close()
-	var cookie uint32
-	var version uint32
-	var offsets [8]uint32
-	binary.Read(rc, binary.LittleEndian, &cookie)
-	if cookie != 0x50425000 {
-		return nil, errors.New("bad cookie")
-	}
 
-	binary.Read(rc, binary.LittleEndian, &version)
-	for i := 0; i < 8; i++ {
-		binary.Read(rc, binary.LittleEndian, &offsets[i])
-	}
-
-	pngOffset := offsets[subFile]
-	pngSize := offsets[subFile+1] - offsets[subFile]
-
-	toSkip := pngOffset - 8*4 - 8
-	io.CopyN(ioutil.Discard, rc, int64(toSkip))
-
-	// Alright, now to read the png bytes.
-	pngData := make([]byte, pngSize)
-	_, err = rc.Read(pngData)
-	if err != nil {
+	var pbp pbp.PBP
+	if err = pbp.Read(rc); err != nil {
 		return nil, err
 	}
-
-	return pngData, nil
+	pbp.Print()
+	return pbp.GetSubFile(subFile)
 }
 
 func ExtractFile(f *zip.File, subFile int, outFile string) error {
